@@ -14,6 +14,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
+import time
 
 from agent_app.agent import app
 
@@ -103,6 +104,7 @@ def main():
 
     tool_scores = []
     goal_scores = []
+    latencies   = []
 
     print("=" * 60)
     print("Evaluacion del Agente Matematico")
@@ -115,7 +117,11 @@ def main():
 
         print(f"\n[{i+1}] {pregunta}")
 
+        time_start = time.time()
         messages      = run_agent(pregunta)
+        time_end = time.time()
+        elapsed = time_end - time_start
+
         actual_calls  = extract_tool_calls(messages)
         final_answer  = get_final_answer(messages)
 
@@ -124,20 +130,26 @@ def main():
 
         tool_scores.append(t_score)
         goal_scores.append(g_score)
+        latencies.append(elapsed)
 
-        print(f"   Tools llamadas    : {[c['name'] for c in actual_calls]}")
+        for c in actual_calls:
+            print(f"   Tool llamada      : {c}")
+
         print(f"   Respuesta agente  : {final_answer}")
+        print(f"   Latencia          : {elapsed:.2f}s")
         print(f"   Tool Call Accuracy : {t_score:.2f}")
         print(f"   Agent Goal Accuracy: {g_score:.2f}")
 
-    avg_tool = sum(tool_scores) / len(tool_scores)
-    avg_goal = sum(goal_scores) / len(goal_scores)
+    avg_tool    = sum(tool_scores) / len(tool_scores)
+    avg_goal    = sum(goal_scores) / len(goal_scores)
+    avg_latency = sum(latencies)   / len(latencies)
 
     print("\n" + "=" * 60)
     print("RESULTADO FINAL")
     print("=" * 60)
     print(f"  Tool Call Accuracy  (promedio): {avg_tool:.2f}")
     print(f"  Agent Goal Accuracy (promedio): {avg_goal:.2f}")
+    print(f"  Latencia promedio             : {avg_latency:.2f}s")
     print("=" * 60)
 
 

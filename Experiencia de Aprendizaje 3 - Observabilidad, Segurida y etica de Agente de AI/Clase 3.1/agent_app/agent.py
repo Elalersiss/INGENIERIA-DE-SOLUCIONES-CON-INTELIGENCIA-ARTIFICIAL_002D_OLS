@@ -13,7 +13,7 @@ from agent_app.prompts import AGENT_SYSTEM_PROMPT
 load_dotenv()
 
 tools = [sumar, restar, multiplicar, dividir]
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0).bind_tools(tools)
+llm = ChatOpenAI(model="gpt-5.5", temperature=0).bind_tools(tools)
 
 
 class AgentState(TypedDict):
