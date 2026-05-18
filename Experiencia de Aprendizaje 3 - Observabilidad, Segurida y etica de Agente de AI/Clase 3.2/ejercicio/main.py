@@ -1,35 +1,11 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from agent_app.agent import app as agent
+from agent_app.models import ChatRequest, ChatResponse
+from agent_app.utils.messages import to_lc_message
 import uuid
 
 app = FastAPI()
-
-
-class Message(BaseModel):
-    role: str  # "user" | "assistant" | "system"
-    content: str
-
-
-class ChatRequest(BaseModel):
-    model: str
-    conversation: list[Message]
-    question: str
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    prompt_tokens: int
-    completion_tokens: int
-
-
-def to_lc_message(m: Message):
-    if m.role == "assistant":
-        return AIMessage(content=m.content)
-    if m.role == "system":
-        return SystemMessage(content=m.content)
-    return HumanMessage(content=m.content)
 
 
 @app.post("/chat", response_model=ChatResponse)
