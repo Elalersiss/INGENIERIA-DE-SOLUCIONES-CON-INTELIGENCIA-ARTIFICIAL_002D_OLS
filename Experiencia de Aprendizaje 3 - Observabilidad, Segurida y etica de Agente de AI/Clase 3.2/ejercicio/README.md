@@ -40,14 +40,23 @@ POST /chat
 }
 ```
 
-## Ejecución
+## Deployment
+
+**URL producción (Google Cloud Run):**
+```
+https://ejercicio-api-997382465313.northamerica-northeast1.run.app
+```
+
+Documentación interactiva: `https://ejercicio-api-997382465313.northamerica-northeast1.run.app/docs`
+
+## Ejecución local
 
 ```bash
 docker build -t ejercicio-api .
-docker run -p 8000:8000 --env-file .env ejercicio-api
+docker run -p 8080:8080 --env-file .env ejercicio-api
 ```
 
-Documentación interactiva disponible en: `http://localhost:8000/docs`
+Documentación interactiva disponible en: `http://localhost:8080/docs`
 
 ## Variables de entorno
 
