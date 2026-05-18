@@ -1,5 +1,6 @@
 .env
 credentials.json
+budget-inversiones-*.json
 token.pickle
 CLAUDE.md
 __pycache__/
