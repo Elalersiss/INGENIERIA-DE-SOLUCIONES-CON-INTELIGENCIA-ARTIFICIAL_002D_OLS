@@ -63,7 +63,7 @@ MONGODB_CONNECTION_STRING=...
 
 ### Actividad 1 — Evaluación de costos, modelos y latencia
 
-Utiliza el endpoint `/chat` para comparar el comportamiento del agente con distintos modelos de OpenAI. Debes realizar al menos **5 consultas por modelo** usando los siguientes:
+Utiliza el endpoint `/chat` para comparar el comportamiento del agente con distintos modelos de OpenAI. Debes realizar al menos **10 consultas por modelo** usando los siguientes:
 
 - `gpt-4o-mini`
 - `gpt-4o`
@@ -77,8 +77,6 @@ Para cada combinación, registra:
 
 > Para medir la latencia puedes usar el tiempo de respuesta del cliente HTTP (Postman, curl, etc.).
 > Para el costo estimado consulta los precios oficiales en [https://openai.com/pricing](https://openai.com/pricing).
-
-**Entregable:** tabla completada con los resultados de tus pruebas y un párrafo con tus conclusiones: ¿qué modelo ofrece el mejor balance entre costo, calidad y velocidad para este caso de uso?
 
 ---
 
@@ -98,5 +96,3 @@ Algunas áreas a considerar:
 - Las llamadas al LLM: ¿se pueden reducir o paralelizar?
 - El modelo utilizado: ¿afecta la latencia además del costo?
 - La búsqueda en MongoDB: ¿hay parámetros que impacten el tiempo?
-
-**Entregable:** documento o comentarios en el código con las 3 mejoras propuestas, justificadas con los datos de la Actividad 1.
