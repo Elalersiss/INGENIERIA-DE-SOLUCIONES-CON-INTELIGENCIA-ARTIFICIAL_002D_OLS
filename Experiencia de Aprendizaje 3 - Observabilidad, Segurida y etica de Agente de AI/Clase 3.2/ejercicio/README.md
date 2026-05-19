@@ -78,7 +78,7 @@ Utiliza el endpoint `/chat` para comparar el comportamiento del agente con disti
 - `gpt-4o`
 - `gpt-3.5-turbo`
 
-Para cada combinación, registra:
+Para cada combinación, registra:V
 
 | Modelo | Pregunta | Prompt tokens | Completion tokens | Latencia (ms) | Costo estimado (USD) |
 |--------|----------|---------------|-------------------|---------------|----------------------|
