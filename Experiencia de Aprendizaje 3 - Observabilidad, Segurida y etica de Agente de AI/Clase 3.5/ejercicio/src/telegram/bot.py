@@ -5,9 +5,17 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
-from src.agents.agent import app as agent
+from src.agents.agent import app as agent, MODEL
 from src.agents.prompts import TELEGRAM_START_MESSAGE
 from src.observability.supabase_logger import SupabaseLogger
+
+
+def _get_company(model: str) -> str:
+    if model.startswith(("gpt-", "o1", "o3", "o4")):
+        return "openai"
+    elif model.startswith("claude"):
+        return "anthropic"
+    return "unknown"
 
 load_dotenv()
 
@@ -55,6 +63,8 @@ class TelegramBot:
         message_id = self._logger.log_message(session_id, "user", user_text)
 
         config = {"configurable": {"thread_id": thread_id}}
+        model = config["configurable"].get("model", MODEL)
+        company = _get_company(model)
 
         # Stream the graph — each chunk is one node completing
         step_order = 0
@@ -72,6 +82,8 @@ class TelegramBot:
                 tool_name = None
                 input_data = {"content": user_text}
                 output_data = {}
+                prompt_tokens = None
+                completion_tokens = None
 
                 messages = state.get("messages", [])
 
@@ -92,6 +104,11 @@ class TelegramBot:
                     elif isinstance(msg, AIMessage) and not msg.tool_calls:
                         output_data["content"] = msg.content
 
+                    # Extract token usage from any AIMessage that has it
+                    if isinstance(msg, AIMessage) and msg.usage_metadata:
+                        prompt_tokens = msg.usage_metadata.get("input_tokens")
+                        completion_tokens = msg.usage_metadata.get("output_tokens")
+
                 # Capture guardrail flags
                 if node_name == "check_guardrails":
                     output_data = {
@@ -106,7 +123,7 @@ class TelegramBot:
                         if isinstance(msg, AIMessage) and msg.tool_calls:
                             output_data["reformulated_query"] = msg.tool_calls[0].get("args", {}).get("query", "")
 
-                self._logger.log_trace(
+                trace_id = self._logger.log_trace(
                     session_id=session_id,
                     message_id=message_id,
                     step_order=step_order,
@@ -116,7 +133,22 @@ class TelegramBot:
                     ended_at=node_end,
                     input=input_data,
                     output=output_data,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    company=company,
+                    model=model,
                 )
+
+                if prompt_tokens is not None and completion_tokens is not None:
+                    self._logger.log_cost(
+                        session_id=session_id,
+                        message_id=message_id,
+                        trace_id=trace_id,
+                        company=company,
+                        model=model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                    )
 
                 step_order += 1
                 final_state = state
