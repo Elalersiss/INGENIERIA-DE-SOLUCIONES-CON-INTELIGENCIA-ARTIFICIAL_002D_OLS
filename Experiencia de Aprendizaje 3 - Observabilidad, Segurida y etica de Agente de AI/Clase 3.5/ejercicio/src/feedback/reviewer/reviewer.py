@@ -1,24 +1,21 @@
 import os
+import re
+from datetime import datetime, timezone
 from typing import Annotated, TypedDict
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
+from supabase import create_client, Client
 from dotenv import load_dotenv
 
 from src.feedback.prompts import REVIEWER_SYSTEM_PROMPT
-from src.feedback.reviewer.reviewer_tools import get_bad_conversations, list_repo_files, read_repo_file, save_suggestion
+from src.feedback.reviewer.reviewer_tools import get_bad_conversations, list_repo_files, read_repo_file, save_suggestion, set_reviewer_model
 
 load_dotenv()
 
 TOOLS = [get_bad_conversations, list_repo_files, read_repo_file, save_suggestion]
-
-INITIAL_MESSAGE = (
-    "Fetch all bad conversations using get_bad_conversations. "
-    "Then for each one, read the relevant source file from the repository and suggest a specific improvement. "
-    "Process each conversation separately — do not mix issues from different sessions."
-)
 
 
 class ReviewerState(TypedDict):
@@ -26,21 +23,52 @@ class ReviewerState(TypedDict):
 
 
 class ConversationReviewerAgent:
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: str = "gpt-5.5"):
         self._model = model
+        self._supabase: Client = create_client(
+            os.getenv("SUPABASE_URL"),
+            os.getenv("SUPABASE_KEY"),
+        )
         self._graph = self._build_graph()
 
     def run(self) -> str:
         """
         Fetches all bad conversations, reads the relevant repo files,
-        and returns a report with suggestions per conversation.
+        suggests improvements, and saves results to Supabase.
         """
+        set_reviewer_model(self._model)
         result = self._graph.invoke({
-            "messages": [HumanMessage(content=INITIAL_MESSAGE)]
+            "messages": [HumanMessage(content=(
+                "Fetch all bad conversations using get_bad_conversations. "
+                "Then for each one, read the relevant source file from the repository and suggest a specific improvement. "
+                "Process each conversation separately — do not mix issues from different sessions."
+            ))]
         })
-        suggestions = result["messages"][-1].content
-        print(suggestions)
-        return suggestions
+        output = result["messages"][-1].content
+        print(output)
+        self._save_from_output(output)
+        return output
+
+    def _save_from_output(self, output: str) -> None:
+        """Fallback: parses agent output and saves suggestions not already saved by the tool."""
+        blocks = re.findall(
+            r"SESSION:\s*(\S+).*?FILE:\s*(.+?)\nSUGGESTION:\s*(.+?)(?=\n---|$)",
+            output,
+            re.DOTALL,
+        )
+        for session_id, diagnosed_file, suggestion in blocks:
+            session_id = session_id.strip()
+            # Only save if the agent didn't already call save_suggestion
+            existing = self._supabase.table("evaluations").select("reviewed_at").eq("session_id", session_id).execute()
+            if existing.data and existing.data[0]["reviewed_at"] is not None:
+                continue
+            self._supabase.table("evaluations").update({
+                "diagnosed_file": diagnosed_file.strip(),
+                "suggestion": suggestion.strip(),
+                "reviewer_model": self._model,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("session_id", session_id).execute()
+            print(f"  [Fallback saved] suggestion for session {session_id}")
 
     def _build_graph(self):
         llm = ChatOpenAI(model=self._model, temperature=0).bind_tools(TOOLS)
@@ -67,5 +95,5 @@ class ConversationReviewerAgent:
 
 
 if __name__ == "__main__":
-    agent = ConversationReviewerAgent(model="gpt-4o")
+    agent = ConversationReviewerAgent(model="gpt-5.5")
     agent.run()

@@ -73,15 +73,17 @@ on conflict (company, model) do nothing;
 
 -- Evaluaciones: calidad de cada conversación (good/bad) generada por el pipeline de feedback
 create table if not exists evaluations (
-  id             uuid        primary key default gen_random_uuid(),
-  session_id     uuid        not null unique references sessions(id) on delete cascade,
-  verdict        text        not null check (verdict in ('good', 'bad')),
-  score          int         not null check (score between 1 and 10),
-  reason         text        not null,
-  diagnosed_file text,
-  suggestion     text,
-  reviewed_at    timestamptz,
-  evaluated_at   timestamptz default now()
+  id               uuid        primary key default gen_random_uuid(),
+  session_id       uuid        not null unique references sessions(id) on delete cascade,
+  verdict          text        not null check (verdict in ('good', 'bad')),
+  score            int         not null check (score between 1 and 10),
+  reason           text        not null,
+  evaluator_model  text,
+  diagnosed_file   text,
+  suggestion       text,
+  reviewer_model   text,
+  reviewed_at      timestamptz,
+  evaluated_at     timestamptz default now()
 );
 
 -- Costos: costo real por cada llamada al LLM

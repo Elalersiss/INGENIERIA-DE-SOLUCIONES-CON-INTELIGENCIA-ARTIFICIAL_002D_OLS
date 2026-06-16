@@ -2,7 +2,7 @@ from src.feedback.evaluator.evaluator import ConversationEvaluator
 from src.feedback.reviewer.reviewer import ConversationReviewerAgent
 
 
-def run_feedback_pipeline(evaluator_model: str = "gpt-4o-mini", reviewer_model: str = "gpt-4o"):
+def run_feedback_pipeline(evaluator_model: str = "gpt-4o-mini", reviewer_model: str = "gpt-5.5"):
     print("=" * 60)
     print("STEP 1: Evaluating new conversations...")
     print("=" * 60)

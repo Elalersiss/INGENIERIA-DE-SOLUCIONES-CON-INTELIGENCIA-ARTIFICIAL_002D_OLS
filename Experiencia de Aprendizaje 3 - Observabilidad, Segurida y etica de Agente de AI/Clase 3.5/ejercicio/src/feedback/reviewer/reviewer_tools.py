@@ -12,6 +12,13 @@ GITHUB_API = os.getenv("GITHUB_API_URL", "https://api.github.com")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_BASE_PATH = os.getenv("GITHUB_BASE_PATH", "")
 
+# Set by ConversationReviewerAgent before running the graph
+_reviewer_model: str = "unknown"
+
+def set_reviewer_model(model: str) -> None:
+    global _reviewer_model
+    _reviewer_model = model
+
 def _github_headers() -> dict:
     headers = {"Accept": "application/vnd.github.v3+json"}
     if GITHUB_TOKEN:
@@ -65,7 +72,11 @@ def list_repo_files(path: str = "") -> list[str]:
     response = requests.get(url, headers=_github_headers())
     if response.status_code != 200:
         return [f"Error {response.status_code}: {url} — {response.json().get('message', response.text)}"]
-    return [f"{item['type']}: {item['path']}" for item in response.json()]
+    items = response.json()
+    # Return paths relative to base_path so the agent doesn't duplicate it
+    def relative(p):
+        return p[len(GITHUB_BASE_PATH):].lstrip("/") if GITHUB_BASE_PATH and p.startswith(GITHUB_BASE_PATH) else p
+    return [f"{item['type']}: {relative(item['path'])}" for item in items]
 
 
 @tool
@@ -74,7 +85,11 @@ def read_repo_file(file_path: str) -> str:
     Reads the content of a specific file from the GitHub repository.
     Example: read_repo_file("src/agents/prompts.py")
     """
-    full_path = f"{GITHUB_BASE_PATH}/{file_path}".strip("/")
+    # Avoid duplicating base path if the agent passes the full path from list_repo_files
+    if GITHUB_BASE_PATH and not file_path.startswith(GITHUB_BASE_PATH):
+        full_path = f"{GITHUB_BASE_PATH}/{file_path}".strip("/")
+    else:
+        full_path = file_path.strip("/")
     url = f"{GITHUB_API}/repos/{REPO}/contents/{full_path}"
     print(f"  [GitHub] GET {url}")
     response = requests.get(url, headers=_github_headers())
@@ -94,6 +109,7 @@ def save_suggestion(session_id: str, diagnosed_file: str, suggestion: str) -> st
     _supabase.table("evaluations").update({
         "diagnosed_file": diagnosed_file,
         "suggestion": suggestion,
+        "reviewer_model": _reviewer_model,
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
     }).eq("session_id", session_id).execute()
     return f"Suggestion saved for session {session_id}."

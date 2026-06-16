@@ -104,6 +104,7 @@ class ConversationEvaluator:
             "verdict": evaluation["verdict"],
             "score": int(evaluation["score"]),
             "reason": evaluation["reason"],
+            "evaluator_model": self._model,
         }).execute()
         return result.data[0]["id"]
 
